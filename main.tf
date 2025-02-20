@@ -33,6 +33,7 @@ resource "aws_s3_object" "index" {
 ##################################################
 # 3) Origin Access Control (OAC) 
 ##################################################
+
 resource "aws_cloudfront_origin_access_control" "oac" {
   name                              = "my-s3-oac"
   origin_access_control_origin_type = "s3"
@@ -65,6 +66,7 @@ resource "aws_cloudfront_distribution" "cdn" {
     cached_methods = ["GET", "HEAD",]
     compress = true
 
+# simple default setting for query string, cookies, and headers
     forwarded_values {
       query_string = false
       cookies {
@@ -73,7 +75,7 @@ resource "aws_cloudfront_distribution" "cdn" {
     }
   }
     
-
+#no geo or specific HTTPS, SSL/TLS encryption restrictions 
   restrictions {
     geo_restriction {
       restriction_type = "none"
@@ -89,22 +91,26 @@ resource "aws_cloudfront_distribution" "cdn" {
 # 5) Bucket Policy to Allow CloudFront Read
 ##################################################
 
+# get the current AWS account identity and assign it to "current"
 data "aws_caller_identity" "current" {}
 
-data "aws_iam_policy_document" "bucket_policy_doc" {
+# create a IAM policy document 
+data "aws_iam_policy_document" "bucket_policy_doc" { 
   statement {
-    sid = "AllowCloudFrontServicePrincipal"
+    sid = "AllowCloudFrontServicePrincipal"  #Statement ID 
     effect = "Allow"
-    actions = ["s3:GetObject"]
+    actions = ["s3:GetObject"]              #Cloudfront can only read the object
     resources = [
-      "${aws_s3_bucket.private_bucket.arn}/*"
+      "${aws_s3_bucket.private_bucket.arn}/*"    #allows Cloudfront to read all objects inside the bucket
     ]
     
+    # only allow CloudFront to access the S3 private bucket
     principals {
       type        = "Service"
       identifiers = ["cloudfront.amazonaws.com"]
     }	
     
+    # only allow access from the same AWS account
     condition {
       test     = "StringEquals"
       variable = "AWS:SourceAccount"
@@ -113,20 +119,23 @@ data "aws_iam_policy_document" "bucket_policy_doc" {
   }
 }
 
+# apply the policy to the bucket
 resource "aws_s3_bucket_policy" "bucket_policy" {
-  bucket = aws_s3_bucket.private_bucket.id
-  policy = data.aws_iam_policy_document.bucket_policy_doc.json
+  bucket = aws_s3_bucket.private_bucket.id     #specifies which bucket 
+  policy = data.aws_iam_policy_document.bucket_policy_doc.json #retrieving the IAM policy document defined earlier in data"aws_iam_policy_document"
 }
 
 ##################################################
 # 6) Outputs
 ##################################################
 
+# Output the CloudFront domain name
 output "cloudfront_domain_name" {
-  description = "Use this domain to access your website via CloudFront"
+  description = "The Website can be accesed with this URL"
   value       = aws_cloudfront_distribution.cdn.domain_name
 }
 
+# Output the S3 bucket name
 output "bucket_name" {
   value = aws_s3_bucket.private_bucket.bucket
 }
