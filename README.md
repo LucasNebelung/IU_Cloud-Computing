@@ -1,5 +1,6 @@
 Setup and Testing Instructions
-To deploy the Infrastructure / test the code, simply run the main.tf file using the following Terraform commands.
+
+To deploy the Infrastructure and/or test the code, simply run the main.tf file using the following Terraform commands.
 
 terraform init
 terraform apply
